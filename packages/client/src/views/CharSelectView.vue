@@ -11,7 +11,7 @@ import { useRouter } from 'vue-router'
 import LogicalViewport from '@/components/LogicalViewport.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import HintBar from '@/components/HintBar.vue'
-import CharSilhouette from '@/components/CharSilhouette.vue'
+import CharPortrait from '@/components/CharPortrait.vue'
 import { characterCatalog, charById } from '@/mock/data'
 import { useMatchStore } from '@/stores'
 import type { CharDef } from '@/types'
@@ -197,7 +197,7 @@ onBeforeUnmount(() => {
         <aside class="slot" :class="{ active: match.mode === 'local' && turn === 0 }">
           <span class="sidetag">1P</span>
           <div class="box" :class="{ ready: p1 }">
-            <CharSilhouette v-if="p1" :char="p1" :height="104" glow />
+            <CharPortrait v-if="p1" :char="p1" :height="104" glow />
             <span v-else class="empty">?</span>
           </div>
           <span v-if="p1?.id === previewed.id" class="stamp">READY</span>
@@ -207,7 +207,7 @@ onBeforeUnmount(() => {
         <section class="preview" :style="{ '--fighter-accent': previewed.color }">
           <div class="portrait">
             <template v-if="!previewed.locked">
-              <CharSilhouette :char="previewed" :height="196" glow />
+              <CharPortrait :char="previewed" :height="196" glow />
             </template>
             <span v-else class="lockedbig">未解锁</span>
           </div>
@@ -309,7 +309,7 @@ onBeforeUnmount(() => {
         <aside class="slot right">
           <span class="sidetag p2">2P</span>
           <div class="box" :class="{ ready: p2 }">
-            <CharSilhouette v-if="p2" :char="p2" :height="104" />
+            <CharPortrait v-if="p2" :char="p2" :height="104" />
             <span v-else class="empty">?</span>
           </div>
           <span v-if="p2" class="stamp dim">CPU</span>
@@ -334,10 +334,11 @@ onBeforeUnmount(() => {
           "
         >
           <template v-if="charById(id)">
-            <CharSilhouette
+            <CharPortrait
               v-if="!charById(id)!.locked"
               :char="charById(id)!"
               :height="52"
+              icon
             />
             <span v-else class="q">?</span>
             <span class="cnick">

@@ -30,13 +30,14 @@ Export-Crop 'Gemini_Generated_Image_te2krete2krete2k (5).jpg' 'li_special_trap_t
 Export-Crop 'Gemini_Generated_Image_te2krete2krete2k (6).jpg' 'li_special_bottle_throw_reference.png' 260 0 1400 2048
 
 # The two lower trap illustrations in source (1) have clear separation; crop separately.
-Export-Crop 'Gemini_Generated_Image_te2krete2krete2k (1).jpg' 'trap_closed_reference.png' 120 1440 800 600
-Export-Crop 'Gemini_Generated_Image_te2krete2krete2k (1).jpg' 'trap_open_reference.png' 1060 1220 950 810
+Export-Crop 'Gemini_Generated_Image_te2krete2krete2k (1).jpg' 'trap_closed_reference.png' 40 1290 920 750
+Export-Crop 'Gemini_Generated_Image_te2krete2krete2k (1).jpg' 'trap_open_reference.png' 970 1110 1020 900
 
 # Bottle is isolated in source (8); preserve exact source pixels.
 Export-Crop 'Gemini_Generated_Image_te2krete2krete2k (8).jpg' 'bottle_reference.png' 1290 0 550 1080
 
 # Full design sheet is retained as a single reference image.
 Export-Crop 'Gemini_Generated_Image_te2krete2krete2k.jpg' 'li_turnaround_reference.png' 0 0 2752 1536
+
 
 Get-ChildItem -LiteralPath $output -File | Select-Object Name, Length

@@ -8,7 +8,7 @@ import { useRoute, useRouter } from 'vue-router'
 import LogicalViewport from '@/components/LogicalViewport.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import HintBar from '@/components/HintBar.vue'
-import CharSilhouette from '@/components/CharSilhouette.vue'
+import CharPortrait from '@/components/CharPortrait.vue'
 import { useSessionStore } from '@/stores'
 import { ME, charById } from '@/mock/data'
 
@@ -137,7 +137,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown))
             <!-- 角色 -->
             <ul v-else key="c" class="chars">
               <li v-for="c in mains" :key="c.id" class="crow">
-                <CharSilhouette :char="c" :height="72" glow />
+                <CharPortrait :char="c" :height="72" glow />
                 <div class="ci">
                   <span class="cn">{{ c.displayName }}</span>
                   <span class="cs">{{ c.tagline }}</span>

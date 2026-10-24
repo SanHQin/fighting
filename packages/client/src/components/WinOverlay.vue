@@ -8,11 +8,14 @@
  * 键盘可操作（Enter 再来一局 / Esc 退出），鼠标也能点。
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { iconUrl } from '@/game/portraits'
 
 /** 结算卡片需要的最小字段集，与 DebugPanel 的 FighterStat 解耦 */
 interface OverFighter {
   name: string
   color: string
+  /** 角色 id，用来查头像；查不到就退回色块 */
+  charId: string
   stocks: number
   dealt: number
   maxComboTaken: number
@@ -50,6 +53,10 @@ const isWin = computed(() => props.winner === 0)
 const winName = computed(() =>
   props.winner === 0 ? props.stats.p1.name : props.stats.p2.name,
 )
+
+/** 战报卡头像：有美术的角色显示图，其余用色块 */
+const icon1 = computed(() => iconUrl(props.stats.p1.charId))
+const icon2 = computed(() => iconUrl(props.stats.p2.charId))
 
 function skip() {
   timers.forEach((t) => window.clearTimeout(t))
@@ -104,7 +111,8 @@ function fmtTime(s: number): string {
     <div class="cards" :class="{ show: phase >= 2 }">
       <div class="card" :class="{ win: winner === 0 }">
         <div class="chead">
-          <i class="sw" :style="{ background: stats.p1.color }" />
+          <i v-if="!icon1" class="sw" :style="{ background: stats.p1.color }" />
+          <img v-else class="swimg" :src="icon1" :alt="stats.p1.name" decoding="async" />
           <b>{{ stats.p1.name }}</b>
           <span v-if="winner === 0" class="badge">WIN</span>
         </div>
@@ -119,7 +127,8 @@ function fmtTime(s: number): string {
 
       <div class="card" :class="{ win: winner === 1 }">
         <div class="chead">
-          <i class="sw" :style="{ background: stats.p2.color }" />
+          <i v-if="!icon2" class="sw" :style="{ background: stats.p2.color }" />
+          <img v-else class="swimg" :src="icon2" :alt="stats.p2.name" decoding="async" />
           <b>{{ stats.p2.name }}</b>
           <span v-if="winner === 1" class="badge">WIN</span>
         </div>
@@ -291,6 +300,18 @@ function fmtTime(s: number): string {
   height: 10px;
   border-radius: 2px;
   flex: none;
+}
+
+/* 有立绘时换成 22px 圆头像：10px 的方块放不下人脸，缩成色块等于没有 */
+.swimg {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: 50% 16%;
+  border: 1px solid var(--line-strong);
+  user-select: none;
 }
 
 .badge {

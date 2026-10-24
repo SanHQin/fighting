@@ -38,6 +38,8 @@ import {
 import { KeyboardSource } from '@/game/keyboard'
 import { drawStageBackdrop, platPalette } from '@/game/stageBackdrop'
 import { createCam, offscreenOf, screenOf, stepCamera, viewportOf } from '@/game/cameraRig'
+import { iconUrl, propUrl } from '@/game/portraits'
+import { sprite } from '@/game/sprites'
 import {
   ART_FIST,
   ART_FOOT,
@@ -56,6 +58,10 @@ const match = useMatchStore()
 const charA = charById(match.charIds[0])!
 const charB = charById(match.charIds[1])!
 const stage = stageById(match.stageId)!
+
+/** HUD 头像：没有正式美术的角色回落成首字，不阻塞开局 */
+const iconA = iconUrl(charA.id)
+const iconB = iconUrl(charB.id)
 
 /** 普通对象，绝不 reactive —— 60Hz 热路径 */
 const world = shallowRef<World>(createWorld(charA, charB, stage))
@@ -117,6 +123,7 @@ const overStats = computed(() => {
   const m = (f: (typeof w.fighters)[0]) => ({
     name: f.char.displayName,
     color: f.char.color,
+    charId: f.char.id,
     stocks: f.stocks,
     dealt: f.dealt,
     maxComboTaken: f.maxComboTaken,
@@ -705,18 +712,26 @@ function drawProjectiles(g: CanvasRenderingContext2D, w: World) {
         break
       }
       case 'bottle': {
+        const propSrc = propUrl((p.owner === 0 ? charA : charB).id, 'bottle')
+        const prop = propSrc ? sprite(propSrc) : null
         g.save()
         g.translate(a.x, a.y)
         g.rotate(Math.atan2(p.vy, p.vx) * 0.6)
-        g.fillStyle = 'rgba(120,190,120,0.92)'
-        g.beginPath()
-        g.roundRect(-6 * s, -9 * s, 12 * s, 18 * s, 3 * s)
-        g.fill()
-        g.fillStyle = '#9fe0a0'
-        g.fillRect(-2.5 * s, -14 * s, 5 * s, 6 * s)
-        g.strokeStyle = '#0b0f16'
-        g.lineWidth = 1.4 * s
-        g.stroke()
+        if (prop) {
+          // 有贴图就画贴图：宽 22 逻辑像素，高度按原比例
+          const h = (22 * s * prop.height) / prop.width
+          g.drawImage(prop, -11 * s, -h / 2, 22 * s, h)
+        } else {
+          g.fillStyle = 'rgba(120,190,120,0.92)'
+          g.beginPath()
+          g.roundRect(-6 * s, -9 * s, 12 * s, 18 * s, 3 * s)
+          g.fill()
+          g.fillStyle = '#9fe0a0'
+          g.fillRect(-2.5 * s, -14 * s, 5 * s, 6 * s)
+          g.strokeStyle = '#0b0f16'
+          g.lineWidth = 1.4 * s
+          g.stroke()
+        }
         g.restore()
         break
       }
@@ -1662,7 +1677,15 @@ const modeLabel = computed(
         <!-- P1：左下角 -->
         <div class="ppanel p1">
           <div class="avatar" :style="{ background: charA.color }">
-            {{ charA.displayName.slice(0, 1) }}
+            <img
+              v-if="iconA"
+              class="avimg"
+              :src="iconA"
+              :alt="charA.displayName"
+              decoding="async"
+              draggable="false"
+            />
+            <template v-else>{{ charA.displayName.slice(0, 1) }}</template>
           </div>
           <div class="pinfo">
             <div class="pname">P1 · {{ charA.displayName }}</div>
@@ -1711,7 +1734,15 @@ const modeLabel = computed(
             </div>
           </div>
           <div class="avatar" :style="{ background: charB.color }">
-            {{ charB.displayName.slice(0, 1) }}
+            <img
+              v-if="iconB"
+              class="avimg"
+              :src="iconB"
+              :alt="charB.displayName"
+              decoding="async"
+              draggable="false"
+            />
+            <template v-else>{{ charB.displayName.slice(0, 1) }}</template>
           </div>
         </div>
       </div>
@@ -1891,6 +1922,17 @@ export default { name: 'BattleView' }
   color: #fff;
   text-shadow: 0 2px 5px rgba(0, 0, 0, 0.7);
   flex: none;
+  overflow: hidden;
+}
+
+/* 头像图：铺满方块、顶部对齐（立绘是 3:5，52px 宽只有一半高度可露出脸和肩） */
+.avimg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 18%;
+  user-select: none;
 }
 
 .pinfo {

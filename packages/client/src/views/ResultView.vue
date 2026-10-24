@@ -13,6 +13,7 @@ import HintBar from '@/components/HintBar.vue'
 import { useFocusGrid, type FocusItem } from '@/composables/useFocusGrid'
 import { useMatchStore } from '@/stores'
 import { LAST_RESULT, charById, stageById } from '@/mock/data'
+import { iconUrl } from '@/game/portraits'
 
 defineProps<{ matchId: string }>()
 const router = useRouter()
@@ -21,6 +22,10 @@ const match = useMatchStore()
 const result = LAST_RESULT
 const charA = charById(result.charIds[0])!
 const charB = charById(result.charIds[1])!
+
+/** 战报卡头像：没美术的角色回落成首字 */
+const iconA = iconUrl(charA.id)
+const iconB = iconUrl(charB.id)
 const stage = stageById(result.stageId)!
 
 const iWin = result.winner === 0
@@ -166,6 +171,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <!-- 我方 -->
           <section class="card mine">
             <div class="who">
+              <span class="face">
+                <img v-if="iconA" :src="iconA" :alt="charA.displayName" decoding="async" draggable="false" />
+                <template v-else>{{ charA.displayName.slice(0, 1) }}</template>
+              </span>
               <span class="slot">P1</span>
               <span class="nm">{{ charA.displayName }}</span>
               <span class="tag">{{ charA.weightClass === 'light' ? '轻' : charA.weightClass === 'heavy' ? '重' : '中' }}量级</span>
@@ -191,6 +200,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <!-- 对手 -->
           <section class="card foe">
             <div class="who">
+              <span class="face">
+                <img v-if="iconB" :src="iconB" :alt="charB.displayName" decoding="async" draggable="false" />
+                <template v-else>{{ charB.displayName.slice(0, 1) }}</template>
+              </span>
               <span class="slot">P2</span>
               <span class="nm">{{ charB.displayName }}</span>
               <span class="tag">{{ charB.weightClass === 'light' ? '轻' : charB.weightClass === 'heavy' ? '重' : '中' }}量级</span>
@@ -424,6 +437,38 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 .card.foe .who {
   justify-content: flex-end;
+}
+
+/* 战报卡里的圆头像：32px 太小看不出细节，靠玩家色描边建立归属 */
+.face {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  overflow: hidden;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  background: var(--bg-3);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--fg-1);
+}
+
+.card.mine .face {
+  border-color: var(--p1);
+}
+
+.card.foe .face {
+  border-color: var(--p2);
+}
+
+.face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 16%;
+  user-select: none;
 }
 
 .slot {

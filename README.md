@@ -222,10 +222,22 @@ HUD 上那颗球同步变大小）。判定用「攻击框 ∩ 受击框」这�
 - 有人被击出画面时：屏幕边缘出箭头 + 伤害角标，卡在角落时画角标而非单边箭头。
 - 命中/出界/击倒带震屏（纯表现层，不进模拟）。
 
-**角色美术**：先用 **SVG 路径**画（`game/charArt.ts`，`Path2D` 直接吃 `d` 字符串，
+**角色美术（战斗内）**：先用 **SVG 路径**画（`game/charArt.ts`，`Path2D` 直接吃 `d` 字符串，
 零图集、零加载、任意缩放不糊）。每个角色有独立配色、头饰（布巾 / 兜帽 / 全盔）与武器
 （斩骨刀 / 提灯 / 铁锤）；描边不用 `stroke` 而用「墨色放大层 + 本色层」双层填充，
 非等比缩放下也等宽。
+
+**角色美术（菜单层）**：已经有真实立绘。`tools/prepare-assets.py` 一条命令从 `source/`
+的生成图产出 `portrait/`（立绘 ≤512×768、头像 ≤128×128）与 `game/`（道具贴图 ≤192）。
+裁切按 alpha 内容包围盒 + 4% 边距自动算，**不写死坐标**；去背用「从四边连通填充」，
+不会误伤角色身上被深色轮廓包住的白色高光。
+
+已接入 6 处：选人页（1P/2P 槽、大预览、底部网格头像）、对战 HUD 头像、投掷物贴图
+（酒瓶）、结算页双方面板、胜利浮层、个人主页。没有图的角色自动回落几何剪影
+（`CharPortrait.vue` 是唯一入口），**美术有无不影响联机**——它不进 `rulesetHash`。
+
+查表在 `game/portraits.ts`；`sprite(url)` 是同步接口（`Image` = 就绪 / `null` = 加载中），
+所以绘制代码永远不需要 `await`，也绝不会在 `draw()` 里阻塞等图片。
 
 **动画**：程序化绘制，全部由 `state` + `stateFramePhase` + `attackDir` 纯推导
 （不进模拟状态、不影响校验和）——**四肢按 9 个方向摆动**（含出拳拖影）、
@@ -262,8 +274,10 @@ pnpm check:all       # 以上 + 接口 + 后台 + 文档
 ```
 docs/          9 份架构文档（1 总纲 + 8 专题）
 tools/         dev.cjs / smoke-sim.mjs / check-render.mjs / check-combat.mjs
+               check-camera.mjs / check-backdrop.mjs / check-feel.mjs / check-netcode.mjs
                test-api.mjs / test-admin.mjs / check_docs.py
-               init-db.sql / ddl.sql / migrate-v08-admin.sql
+               prepare-assets.py（生成图 → 立绘/头像/道具）
+               init-db.sql / ddl.sql / migrate-v08-admin.sql / make-comments.py
 packages/battle-core/src/      战斗内核（纯逻辑，Node 与浏览器共用）
   sim.ts       World 结构 + step()：物理、命中、投射物、场地事件
   types.ts     CharDef / StageDef / SpecialDef 等数据契约
@@ -275,12 +289,18 @@ packages/battle-core/src/      战斗内核（纯逻辑，Node 与浏览器共�
 packages/client/src/
   views/       11 个页面
   game/        keyboard.ts（键盘输入）/ cameraRig.ts（镜头纯函数）
-               protoRuntime.ts 已移除 —— 内核在 battle-core
+               charArt.ts（SVG 角色路径）/ portraits.ts（立绘查表）
+               sprites.ts（图片加载，同步接口）/ stageBackdrop.ts（场地背景）
   mock/        写死的数据（4 角色 / 4 场地）
   components/  AppBackdrop / LogicalViewport / PageHeader / MenuItem / HintBar
-               CharSilhouette / DebugPanel / WinOverlay
+               CharSilhouette / CharPortrait / DebugPanel / WinOverlay
   composables/ useFocusGrid / useViewport
   stores/      session / match / settings
+public/assets/characters/<id>/
+  source/      原始生成图（留档）
+  reference/   整幅参考图（长边 ≤1400）—— 给美术迭代
+  portrait/    立绘 + 头像 —— 给 UI
+  game/        道具贴图 —— 给战斗
 packages/server/src/
   http/routes/ auth.ts / admin.ts / health.ts
   http/middleware/ requireAuth.ts / requireAdmin.ts
@@ -296,9 +316,18 @@ packages/admin/src/
 
 ## 下一步
 
-接联机（房间 + 信令 + 回滚重演）：`battle-core` 的快照 / 校验和 / 规则哈希已就位，
-`check-netcode` 已覆盖两个必过测试，M8 可以直接在上面写 `packages/netcode`。
-之后：把 `mock/data.ts` 换成 API 返回、渲染换 PixiJS、后台补回放审计（重演器直接用 `battle-core`）。
+**1. 角色美术从「能看」到「能用」**：现在菜单层有立绘、战斗内是 SVG 几何体。
+下一步让 AI 按 `source/` 的风格多出几个角色的 T-pose 设定图，`prepare-assets.py`
+直接产出对应 `portrait/`，战斗内则继续走 SVG（`charArt.ts` 换配色与武器路径即可）——
+**这是有意的分层：战斗中角色随相机 0.62–1.15 倍连续缩放，位图必糊，且每帧 8 个肢体要独立旋转。**
+
+**2. 接联机（房间 + 信令 + 回滚重演）**：`battle-core` 的快照 / 校验和 / 规则哈希已就位，
+`check-netcode` 已覆盖两个必过测试（1000 帧确定性、带/不带回滚最终 checksum 一致），
+M8 可以直接在上面写 `packages/netcode`。
+
+**3. 之后**：把 `mock/data.ts` 换成 API 返回（目录接口已在跑，`/api/characters` 回 `source: db`）、
+渲染换 PixiJS、后台补回放审计（重演器直接用 `battle-core`）。
+
 详见 `docs/`。
 
 

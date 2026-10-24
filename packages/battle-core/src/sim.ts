@@ -784,8 +784,18 @@ export function moveOf(f: Fighter, dir: AttackDir, dash = false): MoveDef {
   // 冲刺攻击用独立的 DASH_MOVES 表，不吃角色的基础招式覆盖——
   // 否则「轻角色起招快」会连带把冲刺攻击也削成没有冲击力
   if (dash) return base
-  const ov = f.char.moves?.[dir] ?? f.char.moveOverrides?.[dir]
-  if (!ov) return base
+
+  // moves 是「目录给的整套招式」，moveOverrides 是「这一招我要偏一点」的手调差分。
+  // 两者按字段合并，且 moveOverrides 优先。
+  //
+  // 为什么不是 `moves?.[dir] ?? moveOverrides?.[dir]`：服务端角色目录下发的是
+  // 完整九方向的 moves，一旦用「?? 取第一个存在的对象」，手调的
+  // moveOverrides 就整块失效——数值会被目录静默改掉，而且没有任何编译期或
+  // 运行期提示（本项目真踩过：上挑伤害 7 被改成 11，重击收招 18 被改成 13）。
+  const m = f.char.moves?.[dir]
+  const o = f.char.moveOverrides?.[dir]
+  if (!m && !o) return base
+  const ov = { ...m, ...o }
   return {
     startup: ov.startup ?? base.startup,
     active: ov.active ?? base.active,
