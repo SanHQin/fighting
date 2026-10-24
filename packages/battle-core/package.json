@@ -1,0 +1,19 @@
+{
+  "name": "@fighting/battle-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "平台格斗的战斗内核：纯函数模拟，零 DOM / 零 Vue / 零 Pixi / 零 Date.now",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types.ts",
+    "./sim": "./src/sim.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "type-check": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

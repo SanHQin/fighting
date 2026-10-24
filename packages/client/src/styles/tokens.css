@@ -1,0 +1,95 @@
+/* ============================================================
+ * 设计 token —— 唯一来源，见 docs/04-ui-art.md 第 6 章
+ * 任何组件都不许写死色值，一律 var(--x)
+ * ============================================================ */
+:root {
+  /* 前景 */
+  --fg-0: #f5f7fa;
+  --fg-1: #b6c2d4;
+  --fg-2: #7a889e; /* 仅 ≥18px 用，小字对比度不足 */
+
+  /* 背景 */
+  --bg-0: #05060a;
+  --bg-1: #0f141d;
+  --bg-2: #161d29;
+  --bg-3: #222b3a;
+
+  /* 描边 */
+  --line: #2e3a4d;
+  --line-strong: #44536b;
+
+  /* 品牌 / 焦点 */
+  --brand: #a8e85c;
+  --brand-dim: #7fb03f;
+  --brand-ink: #0a1406;
+
+  /* 玩家色（蓝橙，三色觉缺陷下仍 ≥3:1） */
+  --p1: #3b82f6;
+  --p1-dim: #1e4f9e;
+  --p2: #f97316;
+  --p2-dim: #9c430c;
+
+  /* 语义 */
+  --danger: #ff3b30;
+  --warn: #ffb020;
+  --success: #34d399;
+  --info: #60a5fa;
+
+  /* 伤害百分比分档，见 04 第 5 章 */
+  --dmg-0: #f5f7fa;
+  --dmg-1: #ffd84d;
+  --dmg-2: #ff8a1f;
+  --dmg-3: #ff3b30;
+
+  /* 描边黑，不用纯黑 */
+  --ink: #0b0f16;
+
+  /* 字体 */
+  --font-ui: -apple-system, 'PingFang SC', 'Microsoft YaHei UI', 'Noto Sans SC',
+    system-ui, sans-serif;
+  --font-num: 'DIN Alternate', 'Bahnschrift', 'Roboto Condensed', var(--font-ui);
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+
+  /* 字号（720p 逻辑像素下的值，缩放由 --ui-scale 统一处理） */
+  --fs-hero: 96px;
+  --fs-h1: 40px;
+  --fs-h2: 28px;
+  --fs-h3: 20px;
+  --fs-body: 16px;
+  --fs-small: 14px;
+  --fs-tiny: 12px;
+
+  /* 间距 4 的倍数 */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+
+  /* 圆角 */
+  --r-1: 4px;
+  --r-2: 8px;
+  --r-3: 12px;
+  --r-4: 20px;
+
+  /* 动效 */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-hard: cubic-bezier(0.4, 0, 1, 1);
+  --t-fast: 100ms;
+  --t-mid: 200ms;
+  --t-slow: 300ms;
+
+  /* 层级 */
+  --z-hud: 100;
+  --z-overlay: 200;
+  --z-modal: 300;
+  --z-toast: 400;
+
+  /* 画布逻辑尺寸，见附录 A */
+  --view-w: 1280px;
+  --view-h: 720px;
+}

@@ -1,0 +1,58 @@
+{
+  "docs": [
+    {
+      "file": "00-overview.md",
+      "header": "# 架构设计总纲\n\n> 项目：平台格斗游戏（大乱斗式） ｜ 前端 Vue 3 + PixiJS，后端 Node.js\n>\n> 版本 v0.2.2 ｜ 2026-10-23 ｜ 文档已拆分为 1 总纲 + 8 专题\n\n本文是整套架构的入口。拆分明细见第 1 章，各专题互相引用，但每份都能单独读。\n\n---\n",
+      "sections": [
+        { "type": "file", "path": "tools/parts/overview-map.md", "title": "文档地图" },
+        { "type": "range", "a": 31, "b": 60, "title": "项目定位" },
+        { "type": "range", "a": 60, "b": 107, "title": "技术选型" },
+        { "type": "range", "a": 107, "b": 168, "title": "总体架构" },
+        { "type": "range", "a": 168, "b": 287, "title": "仓库结构" },
+        { "type": "range", "a": 1524, "b": 1540, "title": "性能预算" },
+        { "type": "range", "a": 1540, "b": 1560, "title": "里程碑" },
+        { "type": "range", "a": 1560, "b": 1577, "title": "风险清单" },
+        { "type": "range", "a": 1577, "b": 1615, "title": "测试策略" },
+        { "type": "range", "a": 1615, "b": 1645, "title": "部署拓扑" },
+        { "type": "range", "a": 1645, "b": 1658, "title": "待确认的决策" },
+        { "type": "range", "a": 1658, "b": 1700, "title": "附录 A：常量表", "unnumber": true },
+        { "type": "range", "a": 1700, "b": 1717, "title": "附录 B：术语表", "unnumber": true }
+      ]
+    },
+    {
+      "file": "03-combat-system.md",
+      "header": "# 战斗系统与物理内核\n\n> 项目：平台格斗游戏（大乱斗式） · 所属：[架构设计总纲](./00-overview.md)\n>\n> 版本 v0.2.2 ｜ 2026-10-23\n\n本文件描述 `packages/battle-core`：一个纯逻辑、帧确定、Node 可跑的模拟内核。角色如何运动由物理决定（第 4 章），角色如何行动由状态机决定（见 [角色操作与动画设计](./01-characters.md)）。\n\n---\n",
+      "sections": [
+        { "type": "file", "path": "tools/parts/combat-intro.md", "title": "战斗系统的边界" },
+        { "type": "range", "a": 289, "b": 309, "title": "世界状态" },
+        { "type": "range", "a": 362, "b": 407, "title": "帧循环" },
+        { "type": "range", "a": 595, "b": 806, "title": "物理系统（平台格斗的核心）" },
+        { "type": "range", "a": 546, "b": 571, "title": "快照" },
+        { "type": "range", "a": 571, "b": 595, "title": "校验和" }
+      ]
+    },
+    {
+      "file": "05-server.md",
+      "header": "# 服务端与联机设计\n\n> 项目：平台格斗游戏（大乱斗式） · 所属：[架构设计总纲](./00-overview.md)\n>\n> 版本 v0.2.2 ｜ 2026-10-23\n\n本文件回答两个问题：**服务端到底做什么**（第 2 章），**两端浏览器怎么做到逐帧一致**（第 3 章）。账号与会话见 [用户账号设计](./06-account.md)，数据落库见 [数据库设计](./07-database.md)。\n\n---\n",
+      "sections": [
+        { "type": "file", "path": "tools/parts/netcode-intro.md", "title": "网络架构概览" },
+        { "type": "range", "a": 806, "b": 873, "title": "服务端设计" },
+        { "type": "range", "a": 1403, "b": 1524, "title": "确定性与回滚专题" }
+      ]
+    },
+    {
+      "file": "06-account.md",
+      "header": "# 用户账号设计\n\n> 项目：平台格斗游戏（大乱斗式） · 所属：[架构设计总纲](./00-overview.md)\n>\n> 版本 v0.2.2 ｜ 2026-10-23\n\n本文件描述从「打开网页」到「打完一局」这条路上的身份问题：谁在玩、怎么证明是他、凭证过期怎么办、联机时怎么带着身份上 WebSocket。\n\n---\n",
+      "sections": [
+        { "type": "range", "a": 873, "b": 1234, "title": "账号系统（注册 / 登录 / 会话）" }
+      ]
+    },
+    {
+      "file": "07-database.md",
+      "header": "# 数据库设计（MySQL 8）\n\n> 项目：平台格斗游戏（大乱斗式） · 所属：[架构设计总纲](./00-overview.md)\n>\n> 版本 v0.2.2 ｜ 2026-10-23\n\nMySQL 8.4 + Prisma。这里只有持久化层，业务规则见 [用户账号设计](./06-account.md) 与 [服务端与联机设计](./05-server.md)。\n\n---\n",
+      "sections": [
+        { "type": "range", "a": 1234, "b": 1403, "title": "数据库设计（MySQL 8）" }
+      ]
+    }
+  ]
+}

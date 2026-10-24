@@ -1,0 +1,246 @@
+// 数据库设计 —— 与 docs/07-database.md 对齐
+// 约定（勿改，改动要同步改文档）：
+//   1. InnoDB + utf8mb4_0900_ai_ci；nickname / email 用 _as_cs 做大小写敏感
+//   2. 主键一律 BIGINT UNSIGNED AUTO_INCREMENT，不用 UUID（InnoDB 聚簇索引喜欢顺序写入）
+//   3. 时间一律 DATETIME(3) 存 UTC
+//   4. **不声明 relation / 外键**，但必须建索引 —— 见 docs/07-database.md 1.1
+//   5. 不用 ENUM，用 TINYINT（改枚举值不需要 DDL）
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+/// 可版本化的角色战斗设定。完整 JSON 保存招式、技能与基础属性，客户端与模拟器消费同一份规则数据
+model CharacterDefinition {
+  /// 稳定角色 id（li / aoi / ken）
+  id        String   @id @db.VarChar(32)
+  /// 规则定义版本；规则变化必须递增
+  version   Int      @default(1)
+  /// CharDef JSON，包含九方向招式覆盖与角色专属技能定义
+  definition Json
+  /// 是否在角色选择页开放
+  enabled   Boolean  @default(true)
+  /// 行创建时间
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  /// 行更新时间
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  @@map("character_definitions")
+}
+
+/// 账号。游客与注册用户共用一张表，靠 isGuest 区分
+model User {
+  /// 账号主键。BIGINT UNSIGNED 自增，不用 UUID：InnoDB 聚簇索引下随机主键会让插入随机写盘
+  uid           BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  /// 昵称。唯一性由应用层保证（大小写敏感的 utf8mb4_0900_as_cs，Li 与 li 是两个昵称）
+  nickname      String    @db.VarChar(32)
+  /// 邮箱。注册时转小写归一化；游客为 NULL。唯一索引允许 NULL 重复
+  email         String?   @unique(map: "uk_users_email") @db.VarChar(190)
+  /// argon2id 哈希串（含参数与盐）。游客为 NULL —— 用 NULL 而不是空串，才能用 IS NULL 统计真实注册数
+  passwordHash  String?   @map("password_hash") @db.VarChar(255)
+  /// 是否游客：1 游客 / 0 注册。游客可打 AI 与本地，不能排位，30 天未登录清理
+  isGuest       Boolean   @default(true) @map("is_guest")
+  /// 邮箱验证时间。v1 不做验证流程，字段先留着，加验证时不用改表
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.DateTime(3)
+  /// Elo 评分，初始 1000。公开分，用于段位与排行榜
+  rating        Int       @default(1000)
+  /// 评分不确定度（Glicko 的 RD），初始 300。越大表示分越不可信，用于匹配与段位显示
+  ratingDev     Int       @default(300) @map("rating_dev")
+  /// 累计胜场。冗余计数，查排行榜时避免扫 match_players
+  wins          Int       @default(0)
+  /// 累计负场
+  losses        Int       @default(0)
+  /// 头像色相 0-359。不存图片，用色相加昵称首字生成头像，省一份存储与 CDN
+  avatarHue     Int       @default(210) @map("avatar_hue")
+  /// 封禁到期时间。NULL 表示未封禁；9999-12-31 表示永久封禁
+  bannedUntil   DateTime? @map("banned_until") @db.DateTime(3)
+  /// 封禁理由。后台必填 —— 三个月后没人记得为什么封的
+  banReason     String?   @map("ban_reason") @db.VarChar(255)
+  /// 最近登录时间。用于 30 天游客清理与活跃用户统计
+  lastLoginAt   DateTime? @map("last_login_at") @db.DateTime(3)
+  /// 后台角色：0 玩家 / 1 审核员 / 2 管理员。不进 JWT、每次查库 —— 撤销权限不该有 15 分钟真空期
+  role          Int       @default(0) @db.TinyInt
+  /// 注册时间（UTC）。毫秒精度，展示时按浏览器时区换算
+  createdAt     DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  /// 行更新时间（UTC）。应用层维护，不依赖 ON UPDATE，便于回滚时保留原值
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  @@index([nickname], map: "idx_users_nickname")
+  @@index([lastLoginAt], map: "idx_users_last_login")
+  @@index([rating], map: "idx_users_rating")
+  @@map("users")
+}
+
+/// 会话。库里只存 refresh token 的 sha256，绝不留原文
+model UserSession {
+  /// 会话主键。一条 refresh 令牌一行
+  id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  /// 所属账号。故意不建外键：外键会在大批量清理会话时锁表，改用 idx_sessions_user 兜底
+  userId           BigInt    @map("user_id") @db.UnsignedBigInt
+  /// refresh 令牌的 sha256（hex, 64 字符）。库里永不存原文 —— 库被拖走也无法冒充登录
+  refreshTokenHash String    @unique(map: "uk_sessions_token") @map("refresh_token_hash") @db.Char(64)
+  /// 签发时的 UA，截断 255。用于自查登录设备与异常登录提示
+  userAgent        String?   @map("user_agent") @db.VarChar(255)
+  /// 签发时的 IP，IPv6 最长 45 字符。仅用于审计与限流关联，不做地理位置
+  ip               String?   @db.VarChar(45)
+  /// 过期时间（UTC，7 天）。过期后即使未吊销也不可用
+  expiresAt        DateTime  @map("expires_at") @db.DateTime(3)
+  /// 吊销时间（UTC）。NULL 表示有效。非 NULL 仍被使用则判定令牌泄露，整账号下线
+  revokedAt        DateTime? @map("revoked_at") @db.DateTime(3)
+  /// 最近一次 refresh 时间。配合宽限期识别多标签页并发刷新
+  lastUsedAt       DateTime? @map("last_used_at") @db.DateTime(3)
+  /// 签发时间（UTC）。轮换时用它判断是否由这条会话派生出更新的会话
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@index([userId, revokedAt], map: "idx_sessions_user")
+  @@index([expiresAt], map: "idx_sessions_expires")
+  @@map("user_sessions")
+}
+
+/// 一局对战
+model Match {
+  /// 对局主键
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  /// 对外 12 位随机串。API 与回放链接只用它，避免暴露自增 id 被枚举
+  publicId    String    @unique(map: "uk_matches_public") @map("public_id") @db.Char(12)
+  /// 场地 id（dying_beacon / gearworks / ember_field / sky_bridge）。存字符串而不是外键，场地是代码里的数据
+  stageId     String    @map("stage_id") @db.VarChar(32)
+  /// 模式：0 本地双人 / 1 人机 / 2 在线。TINYINT 不用 ENUM —— ENUM 加值要 DDL 且排序按定义序
+  mode        Int       @default(0) @db.TinyInt
+  /// 胜者槽位 0/1。平局或中断为 NULL
+  winnerSlot  Int?      @map("winner_slot") @db.TinyInt
+  /// 实际进行的回合数。3 命制下每次全员落命算一回合
+  roundCount  Int       @default(1) @map("round_count") @db.TinyInt
+  /// 对局时长（毫秒）。UINT 够 49 天，不必 BIGINT
+  durationMs  Int       @default(0) @map("duration_ms") @db.UnsignedInt
+  /// 规则哈希。同 hash 才能重演回放 —— 角色数值一改，老回放就不可信
+  rulesetHash String    @map("ruleset_hash") @db.Char(16)
+  /// 开始时间（UTC）
+  startedAt   DateTime  @map("started_at") @db.DateTime(3)
+  /// 结束时间（UTC）。中断的对局为 NULL，用来区分没打完与打完了
+  endedAt     DateTime? @map("ended_at") @db.DateTime(3)
+  /// 落库时间（UTC）。列表默认按它倒序
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@index([createdAt], map: "idx_matches_created")
+  @@index([stageId], map: "idx_matches_stage")
+  @@map("matches")
+}
+
+/// 对局里的一方。一局两行
+model MatchPlayer {
+  /// 主键
+  id           BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  /// 所属对局
+  matchId      BigInt   @map("match_id") @db.UnsignedBigInt
+  /// 账号。游客也会占一行，便于统计该游客的对局
+  uid          BigInt   @map("uid") @db.UnsignedBigInt
+  /// 槽位 0/1（对应 P1/P2）。与 match_id 组成唯一键
+  slot         Int      @db.TinyInt
+  /// 角色 id（li / aoi / ken）。存字符串便于人读，代价是改名要洗数据
+  charId       String   @map("char_id") @db.VarChar(16)
+  /// 结束时剩余命数。0 表示被打空
+  stocksLeft   Int      @default(0) @map("stocks_left") @db.TinyInt
+  /// 本局造成的总伤害（百分比累加）。用于结算页与角色平衡统计
+  damageDealt  Int      @default(0) @map("damage_dealt") @db.UnsignedInt
+  /// 本局最高连击段数
+  maxCombo     Int      @default(0) @map("max_combo") @db.TinyInt
+  /// 被击倒次数。反映抗压能力，也是角色调参依据
+  knockdowns   Int      @default(0) @db.TinyInt
+  /// 结算前评分。存快照而不是回算 —— Elo/Glicko 参数一改，历史就算不回去了
+  ratingBefore Int?     @map("rating_before")
+  /// 结算后评分。差值即结算页上显示的加减分
+  ratingAfter  Int?     @map("rating_after")
+  /// 本局输入流哈希。与对端不一致说明有人篡改输入，用于反作弊
+  inputHash    String?  @map("input_hash") @db.Char(16)
+  /// 落库时间（UTC）
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@unique([matchId, slot], map: "uk_players_match_slot")
+  @@index([uid, createdAt], map: "idx_players_uid")
+  @@map("match_players")
+}
+
+/// 回合。三命制的一局内部有多个回合
+model MatchRound {
+  /// 主键
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  /// 所属对局
+  matchId    BigInt   @map("match_id") @db.UnsignedBigInt
+  /// 回合序号，从 1 起。与 match_id 组成唯一键
+  roundNo    Int      @map("round_no") @db.TinyInt
+  /// 该回合胜者槽位。平局为 NULL
+  winnerSlot Int?     @map("winner_slot") @db.TinyInt
+  /// 该回合时长（毫秒）
+  durationMs Int      @default(0) @map("duration_ms") @db.UnsignedInt
+  /// 落库时间（UTC）。回合明细通常与对局同批写入，这一列用于排查写入延迟
+  createdAt  DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@unique([matchId, roundNo], map: "uk_rounds_match_no")
+  @@map("match_rounds")
+}
+
+/// 回合末双方剩余命数。原来想塞 JSON，MySQL 没有原生 JSONB 所以拆表
+model MatchRoundSurvivor {
+  /// 主键
+  id         BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  /// 所属回合
+  roundId    BigInt @map("round_id") @db.UnsignedBigInt
+  /// 存活者槽位。只记该回合结束时还活着的人
+  slot       Int    @db.TinyInt
+  /// 该回合结束时剩余命数
+  stocksLeft Int    @map("stocks_left") @db.TinyInt
+
+  @@unique([roundId, slot], map: "uk_survivors_round_slot")
+  @@map("match_round_survivors")
+}
+
+/// 回放。只存输入不存状态，3 分钟对局约 43KB，gzip 后 ~10KB
+model Replay {
+  /// 对局主键兼本表主键，一对一
+  matchId   BigInt   @id @map("match_id") @db.UnsignedBigInt
+  /// 压缩后的输入流（gzip）。只存输入不存状态：3 分钟对局约 43KB，压后约 10KB；重演靠 battle-core 确定性
+  payload   Bytes    @db.LongBlob
+  /// 压缩前大小。用于观察回放膨胀，超过 200KB 要查是不是录了多余帧
+  sizeBytes Int      @map("size_bytes") @db.UnsignedInt
+  /// 终局校验和（hex, 16）。重演结果必须与它一致，否则说明内核版本不兼容
+  checksum  String   @db.Char(16)
+  /// 落库时间（UTC）
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@map("replays")
+}
+
+/// 后台操作审计。
+///
+/// 为什么单独一张表而不是往日志文件里写：GM 干过的每一件事都要能被另一个
+/// GM 查，而日志文件没人会去翻；更要紧的是「封禁理由」这种字段一旦被改，
+/// 只有数据库本身的写入记录能证明谁改的。
+model AdminAuditLog {
+  /// 主键
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  /// 操作人账号。故意不建外键：GM 账号被删后审计记录必须还在
+  actorUid   BigInt   @map("actor_uid") @db.UnsignedBigInt
+  /// 动作码，如 user.ban / user.setRole。用字符串不用枚举，加动作不用改表
+  action     String   @db.VarChar(48)
+  /// 目标类型 user / match / stage 等。与 target_id 组成可点回的目标
+  targetType String   @map("target_type") @db.VarChar(24)
+  /// 目标 id（字符串，兼容自增 id 与 public_id）
+  targetId   String   @map("target_id") @db.VarChar(64)
+  /// 补充说明，截断 512。封禁理由、改名前后的昵称都放这里
+  detail     String?  @db.VarChar(512)
+  /// 操作来源 IP。审计的价值一半在于谁、从哪
+  ip         String?  @db.VarChar(45)
+  /// 操作时间（UTC）。审计表只追加不修改
+  createdAt  DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@index([actorUid, createdAt], map: "idx_audit_actor")
+  @@index([targetType, targetId], map: "idx_audit_target")
+  @@index([createdAt], map: "idx_audit_created")
+  @@map("admin_audit_logs")
+}

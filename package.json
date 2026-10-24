@@ -1,0 +1,49 @@
+{
+  "name": "fighting",
+  "version": "0.1.0",
+  "private": true,
+  "description": "平台格斗游戏（大乱斗式）· 前端 Vue 3 + PixiJS，后端 Node.js",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "type-check": "pnpm type-check:core && pnpm type-check:client && pnpm type-check:admin && pnpm type-check:server",
+    "type-check:core": "pnpm -C packages/battle-core type-check",
+    "type-check:client": "pnpm -C packages/client type-check",
+    "type-check:admin": "pnpm -C packages/admin type-check",
+    "type-check:server": "pnpm -C packages/server type-check",
+    "dev": "pnpm -C packages/client dev",
+    "dev:server": "pnpm -C packages/server dev",
+    "dev:admin": "pnpm -C packages/admin dev",
+    "build": "pnpm -C packages/client build",
+    "build:admin": "pnpm -C packages/admin build",
+    "preview": "pnpm -C packages/client preview",
+    "check:sim": "node tools/smoke-sim.mjs",
+    "check:combat": "node tools/check-combat.mjs",
+    "check:netcode": "node tools/check-netcode.mjs",
+    "check:camera": "node tools/check-camera.mjs",
+    "check:backdrop": "node tools/check-backdrop.mjs",
+    "check:feel": "node tools/check-feel.mjs",
+    "check:render": "node tools/check-render.mjs",
+    "check:api": "node tools/test-api.mjs",
+    "check:admin": "node tools/test-admin.mjs",
+    "check:docs": "py tools/check_docs.py",
+    "check": "pnpm check:sim && pnpm check:combat && pnpm check:netcode && pnpm check:camera && pnpm check:backdrop && pnpm check:feel && pnpm check:render && pnpm check:docs",
+    "admin:grant": "pnpm -C packages/server exec node src/scripts/set-role.ts",
+    "build:server": "pnpm -C packages/server build",
+    "db:generate": "pnpm -C packages/server db:generate",
+    "db:migrate": "pnpm -C packages/server db:migrate",
+    "db:studio": "pnpm -C packages/server db:studio",
+    "db:seed:characters": "node --env-file=packages/server/.env tools/seed-characters.mjs",
+    "check:all": "pnpm check && pnpm check:api && pnpm check:admin && pnpm check:docs"
+  },
+  "pnpm": {
+    "neverBuiltDependencies": [
+      "@prisma/engines",
+      "prisma",
+      "esbuild"
+    ]
+  },
+  "packageManager": "pnpm@10.34.7"
+}

@@ -1,0 +1,41 @@
+{
+  "name": "@fighting/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "残灯台后端：账号、房间、信令、对局落库",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "node --env-file=.env src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@fastify/cookie": "11.1.3",
+    "@fastify/cors": "11.3.1",
+    "@fastify/rate-limit": "11.2.1",
+    "@fastify/websocket": "11.3.4",
+    "@node-rs/argon2": "2.2.2",
+    "@prisma/adapter-mariadb": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "dotenv": "18.0.9",
+    "fastify": "5.12.7",
+    "jose": "6.2.13",
+    "mariadb": "3.5.4",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.0",
+    "@types/ws": "8.18.2",
+    "pino-pretty": "13.2.0",
+    "prisma": "7.10.1",
+    "typescript": "5.9.3"
+  }
+}
